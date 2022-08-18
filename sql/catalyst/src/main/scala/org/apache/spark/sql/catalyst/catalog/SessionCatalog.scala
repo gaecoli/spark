@@ -368,10 +368,6 @@ class SessionCatalog(
       tableDefinition: CatalogTable,
       ignoreIfExists: Boolean,
       validateLocation: Boolean = true): Unit = {
-    val isExternal = tableDefinition.tableType == CatalogTableType.EXTERNAL
-    if (isExternal && tableDefinition.storage.locationUri.isEmpty) {
-      throw QueryCompilationErrors.createExternalTableWithoutLocationError
-    }
 
     val qualifiedIdent = qualifyIdentifier(tableDefinition.identifier)
     val db = qualifiedIdent.database.get
