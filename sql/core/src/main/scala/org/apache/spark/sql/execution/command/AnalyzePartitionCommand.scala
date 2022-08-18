@@ -17,6 +17,8 @@
 
 package org.apache.spark.sql.execution.command
 
+import org.apache.hadoop.fs.Path
+
 import org.apache.spark.sql.{Column, Row, SparkSession}
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.analysis.UnresolvedAttribute
@@ -24,6 +26,7 @@ import org.apache.spark.sql.catalyst.catalog.{CatalogTable, CatalogTableType, Ex
 import org.apache.spark.sql.catalyst.catalog.CatalogTypes.TablePartitionSpec
 import org.apache.spark.sql.catalyst.expressions.{And, EqualTo, Literal}
 import org.apache.spark.sql.errors.QueryCompilationErrors
+import org.apache.spark.sql.execution.datasources.SymlinkTextInputFormatUtil
 import org.apache.spark.sql.util.PartitioningUtils
 import org.apache.spark.util.collection.Utils
 
@@ -104,11 +107,14 @@ case class AnalyzePartitionCommand(
         calculateRowCountsPerPartition(sparkSession, tableMeta, partitionValueSpec)
       }
 
+    // get real symlink table size
+    val isSymlinkTable = SymlinkTextInputFormatUtil.isSymlinkTextFormat(tableMeta)
+    lazy val fs = new Path(tableMeta.location)
+      .getFileSystem(sparkSession.sparkContext.hadoopConfiguration)
     // Update the metastore if newly computed statistics are different from those
     // recorded in the metastore.
-
-    val sizes = CommandUtils.calculateMultipleLocationSizes(sparkSession, tableMeta.identifier,
-      partitions.map(_.storage.locationUri))
+    val sizes = CommandUtils.calculateMultipleLocationSizes(sparkSession, tableMeta.identifier
+      , CommandUtils.getPartitionPaths(partitions, isSymlinkTable, fs))
     val newPartitions = partitions.zipWithIndex.flatMap { case (p, idx) =>
       val newRowCount = rowCounts.get(p.spec)
       val newStats = CommandUtils.compareAndGetNewStats(p.stats, sizes(idx), newRowCount)

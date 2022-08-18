@@ -34,7 +34,7 @@ import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.util.{ArrayData, GenericArrayData}
 import org.apache.spark.sql.errors.QueryCompilationErrors
 import org.apache.spark.sql.execution.QueryExecution
-import org.apache.spark.sql.execution.datasources.{DataSourceUtils, InMemoryFileIndex}
+import org.apache.spark.sql.execution.datasources.{DataSourceUtils, InMemoryFileIndex, SymlinkTextInputFormatUtil}
 import org.apache.spark.sql.internal.{SessionState, SQLConf}
 import org.apache.spark.sql.types._
 
@@ -97,6 +97,19 @@ object CommandUtils extends Logging {
     logInfo(s"It took ${(System.nanoTime() - startTime) / (1000 * 1000)} ms to calculate" +
       s" the total size for table ${catalogTable.identifier}.")
     (totalSize, newPartitions)
+  }
+
+  def getPartitionPaths(partitions: Seq[CatalogTablePartition]
+                        , isSymlinkTable: Boolean, fs: => FileSystem): Seq[Option[URI]] = {
+    partitions.flatMap { catalogTablePartition =>
+        if (isSymlinkTable) {
+          catalogTablePartition.storage.locationUri
+            .map(SymlinkTextInputFormatUtil.getSymlinkTableLocationPaths(fs, _))
+            .getOrElse(Seq.empty)
+        } else {
+          Seq(catalogTablePartition.storage.locationUri)
+        }
+    }
   }
 
   def calculateSingleLocationSize(

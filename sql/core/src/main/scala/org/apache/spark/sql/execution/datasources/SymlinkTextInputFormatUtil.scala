@@ -18,6 +18,7 @@
 package org.apache.spark.sql.execution.datasources
 
 import java.io.{BufferedReader, InputStreamReader}
+import java.net.URI
 import java.nio.charset.StandardCharsets.UTF_8
 
 import scala.collection.JavaConverters._
@@ -25,7 +26,6 @@ import scala.collection.JavaConverters._
 import com.google.common.io.CharStreams
 import org.apache.hadoop.fs.{FileSystem, Path, PathFilter}
 import org.apache.spark.sql.catalyst.catalog.CatalogTable
-
 object SymlinkTextInputFormatUtil {
 
   def isSymlinkTextFormat(inputFormat: String): Boolean = {
@@ -59,5 +59,11 @@ object SymlinkTextInputFormatUtil {
       case _ =>
         Seq.empty
     }
+  }
+
+  def getSymlinkTableLocationPaths(fileSystem: FileSystem, location: URI): Seq[Option[URI]] = {
+    SymlinkTextInputFormatUtil
+      .getTargetPathsFromSymlink(fileSystem, new Path(location))
+      .map(path => Option(path.toUri))
   }
 }
