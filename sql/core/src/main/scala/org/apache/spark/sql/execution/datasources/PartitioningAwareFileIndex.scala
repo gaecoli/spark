@@ -132,7 +132,16 @@ abstract class PartitioningAwareFileIndex(
               // Directory does not exist, or has no children files
               Nil
           }
-          PartitionDirectory(values, files.toArray)
+          // Check leaf files since they might be symlink targets
+          if (files.isEmpty) {
+            val status: Seq[FileStatus] = leafFiles.get(path) match {
+              case Some(existingFile) if isNonEmptyFile(existingFile) => Seq(existingFile)
+              case _ => Nil
+            }
+            PartitionDirectory(values, status.toArray)
+          } else {
+            PartitionDirectory(values, files.toArray)
+          }
       }
     }
     logTrace("Selected files after partition pruning:\n\t" + selectedPartitions.mkString("\n\t"))
