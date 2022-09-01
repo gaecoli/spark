@@ -24,7 +24,7 @@ import scala.collection.mutable.ArrayBuffer
 import scala.util.control.NonFatal
 
 import org.apache.hadoop.fs.{FileContext, FsConstants, Path}
-import org.apache.hadoop.fs.permission.{AclEntry, AclEntryScope, AclEntryType, FsAction, FsPermission}
+import org.apache.hadoop.fs.permission._
 
 import org.apache.spark.sql.{Row, SparkSession}
 import org.apache.spark.sql.catalyst.{SQLConfHelper, TableIdentifier}
@@ -49,8 +49,7 @@ import org.apache.spark.sql.execution.datasources.v2.orc.OrcDataSourceV2
 import org.apache.spark.sql.execution.datasources.v2.parquet.ParquetDataSourceV2
 import org.apache.spark.sql.internal.{HiveSerDe, SQLConf}
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.util.PartitioningUtils
-import org.apache.spark.sql.util.SchemaUtils
+import org.apache.spark.sql.util.{FordealAuthUtils, PartitioningUtils, SchemaUtils}
 
 /**
  * A command to create a table with the same definition of the given existing table.
@@ -129,8 +128,12 @@ case class CreateTableLikeCommand(
         provider = newProvider,
         partitionColumnNames = sourceTableDesc.partitionColumnNames,
         bucketSpec = sourceTableDesc.bucketSpec,
+        owner = FordealAuthUtils.getAuthUser(sparkSession),
         properties = properties,
         tracksPartitionsInCatalog = sourceTableDesc.tracksPartitionsInCatalog)
+
+    log.info(s"=== table provider:${newTableDesc.provider}, " +
+      s" fordeal.session.user = ${FordealAuthUtils.getAuthUser(sparkSession)}")
 
     catalog.createTable(newTableDesc, ifNotExists)
     Seq.empty[Row]
@@ -167,7 +170,15 @@ case class CreateTableCommand(
     ignoreIfExists: Boolean) extends LeafRunnableCommand {
 
   override def run(sparkSession: SparkSession): Seq[Row] = {
-    sparkSession.sessionState.catalog.createTable(table, ignoreIfExists)
+    log.info(s"=== table provider:${table.provider}, " +
+      s" fordeal.session.user = " +
+      s"${FordealAuthUtils.getAuthUser(sparkSession)}")
+
+    // scalastyle:off
+    val tableWithOwner = table.copy(owner = FordealAuthUtils.getAuthUser(sparkSession))
+    // scalastyle:on
+
+    sparkSession.sessionState.catalog.createTable(tableWithOwner, ignoreIfExists)
     Seq.empty[Row]
   }
 }

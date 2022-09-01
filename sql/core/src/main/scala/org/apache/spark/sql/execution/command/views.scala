@@ -34,7 +34,7 @@ import org.apache.spark.sql.connector.catalog.CatalogV2Implicits.NamespaceHelper
 import org.apache.spark.sql.errors.QueryCompilationErrors
 import org.apache.spark.sql.internal.{SQLConf, StaticSQLConf}
 import org.apache.spark.sql.types.{MetadataBuilder, StructType}
-import org.apache.spark.sql.util.SchemaUtils
+import org.apache.spark.sql.util.{FordealAuthUtils, SchemaUtils}
 
 /**
  * Create or replace a view with given query plan. This command will generate some view-specific
@@ -209,6 +209,7 @@ case class CreateViewCommand(
       tableType = CatalogTableType.VIEW,
       storage = CatalogStorageFormat.empty,
       schema = aliasedSchema,
+      owner = FordealAuthUtils.getAuthUser(session),
       properties = newProperties,
       viewOriginalText = originalText,
       viewText = originalText,
