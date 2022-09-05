@@ -58,23 +58,22 @@ class JsonProtocolSuite extends SparkFunSuite {
       makeTaskInfo(123L, 234, 67, 234, 345L, false),
       new ExecutorMetrics(Array(543L, 123456L, 12345L, 1234L, 123L, 12L, 432L,
         321L, 654L, 765L, 256912L, 123456L, 123456L, 61728L, 30364L, 15182L,
-        0, 0, 0, 0, 80001L)),
+        0, 0, 0, 0, 80001L, 1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L, 11L, 12L, 13L, 14L)),
       makeTaskMetrics(300L, 400L, 500L, 600L, 700, 800, 0,
         hasHadoopInput = false, hasOutput = false))
     val taskEndWithHadoopInput = SparkListenerTaskEnd(1, 0, "ShuffleMapTask", Success,
       makeTaskInfo(123L, 234, 67, 234, 345L, false),
       new ExecutorMetrics(Array(543L, 123456L, 12345L, 1234L, 123L, 12L, 432L,
         321L, 654L, 765L, 256912L, 123456L, 123456L, 61728L, 30364L, 15182L,
-        0, 0, 0, 0, 80001L)),
+        0, 0, 0, 0, 80001L, 1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L, 11L, 12L, 13L, 14L)),
       makeTaskMetrics(300L, 400L, 500L, 600L, 700, 800, 0,
         hasHadoopInput = true, hasOutput = false))
     val taskEndWithOutput = SparkListenerTaskEnd(1, 0, "ResultTask", Success,
       makeTaskInfo(123L, 234, 67, 234, 345L, false),
       new ExecutorMetrics(Array(543L, 123456L, 12345L, 1234L, 123L, 12L, 432L,
         321L, 654L, 765L, 256912L, 123456L, 123456L, 61728L, 30364L, 15182L,
-        0, 0, 0, 0, 80001L)),
-      makeTaskMetrics(300L, 400L, 500L, 600L, 700, 800, 0,
-        hasHadoopInput = true, hasOutput = true))
+        0, 0, 0, 0, 80001L, 1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L, 11L, 12L, 13L, 14L)),
+      makeTaskMetrics(300L, 400L, 500L, 600L, 700, 800, 0, hasHadoopInput = true, hasOutput = true))
     val jobStart = {
       val stageIds = Seq[Int](1, 2, 3, 4)
       val stageInfos = stageIds.map(x =>
@@ -136,7 +135,8 @@ class JsonProtocolSuite extends SparkFunSuite {
       val executorUpdates = new ExecutorMetrics(
         Array(543L, 123456L, 12345L, 1234L, 123L, 12L, 432L,
           321L, 654L, 765L, 256912L, 123456L, 123456L, 61728L,
-          30364L, 15182L, 10L, 90L, 2L, 20L, 80001L))
+          30364L, 15182L, 10L, 90L, 2L, 20L, 80001L,
+          1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L, 11L, 12L, 13L, 14L))
       SparkListenerExecutorMetricsUpdate("exec3", Seq((1L, 2, 3, accumUpdates)),
         Map((0, 0) -> executorUpdates))
     }
@@ -147,7 +147,8 @@ class JsonProtocolSuite extends SparkFunSuite {
       SparkListenerStageExecutorMetrics("1", 2, 3,
         new ExecutorMetrics(Array(543L, 123456L, 12345L, 1234L, 123L, 12L, 432L,
           321L, 654L, 765L, 256912L, 123456L, 123456L, 61728L,
-          30364L, 15182L, 10L, 90L, 2L, 20L, 80001L)))
+          30364L, 15182L, 10L, 90L, 2L, 20L, 80001L,
+          1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L, 11L, 12L, 13L, 14L)))
     val rprofBuilder = new ResourceProfileBuilder()
     val taskReq = new TaskResourceRequests()
       .cpus(1)
@@ -1754,7 +1755,21 @@ private[spark] object JsonProtocolSuite extends Assertions {
       |    "MinorGCTime" : 0,
       |    "MajorGCCount" : 0,
       |    "MajorGCTime" : 0,
-      |    "TotalGCTime" : 80001
+      |    "TotalGCTime" : 80001,
+      |    "MemoryPoolCodeCacheUsed" : 1,
+      |    "MemoryPoolCodeCacheMax" : 2,
+      |    "MemoryPoolMetaspaceUsed" : 3,
+      |    "MemoryPoolMetaspaceMax" : 4,
+      |    "MemoryPoolCompressedClassSpaceUsed" : 5,
+      |    "MemoryPoolCompressedClassSpaceMax" : 6,
+      |    "MemoryPoolPSEdenSpaceUsed" : 7,
+      |    "MemoryPoolPSEdenSpaceMax" : 8,
+      |    "MemoryPoolPSSurvivorSpaceUsed" : 9,
+      |    "MemoryPoolPSSurvivorSpaceMax" : 10,
+      |    "MemoryPoolPSOldGenUsed" : 11,
+      |    "MemoryPoolPSOldGenMax" : 12,
+      |    "JVMMaxMemory" : 13,
+      |    "JVMUsedMemory" : 14
       |  },
       |  "Task Metrics": {
       |    "Executor Deserialize Time": 300,
@@ -1893,7 +1908,21 @@ private[spark] object JsonProtocolSuite extends Assertions {
       |    "MinorGCTime" : 0,
       |    "MajorGCCount" : 0,
       |    "MajorGCTime" : 0,
-      |    "TotalGCTime" : 80001
+      |    "TotalGCTime" : 80001,
+      |    "MemoryPoolCodeCacheUsed" : 1,
+      |    "MemoryPoolCodeCacheMax" : 2,
+      |    "MemoryPoolMetaspaceUsed" : 3,
+      |    "MemoryPoolMetaspaceMax" : 4,
+      |    "MemoryPoolCompressedClassSpaceUsed" : 5,
+      |    "MemoryPoolCompressedClassSpaceMax" : 6,
+      |    "MemoryPoolPSEdenSpaceUsed" : 7,
+      |    "MemoryPoolPSEdenSpaceMax" : 8,
+      |    "MemoryPoolPSSurvivorSpaceUsed" : 9,
+      |    "MemoryPoolPSSurvivorSpaceMax" : 10,
+      |    "MemoryPoolPSOldGenUsed" : 11,
+      |    "MemoryPoolPSOldGenMax" : 12,
+      |    "JVMMaxMemory" : 13,
+      |    "JVMUsedMemory" : 14
       |  },
       |  "Task Metrics": {
       |    "Executor Deserialize Time": 300,
@@ -2032,7 +2061,21 @@ private[spark] object JsonProtocolSuite extends Assertions {
       |    "MinorGCTime" : 0,
       |    "MajorGCCount" : 0,
       |    "MajorGCTime" : 0,
-      |    "TotalGCTime" : 80001
+      |    "TotalGCTime" : 80001,
+      |    "MemoryPoolCodeCacheUsed" : 1,
+      |    "MemoryPoolCodeCacheMax" : 2,
+      |    "MemoryPoolMetaspaceUsed" : 3,
+      |    "MemoryPoolMetaspaceMax" : 4,
+      |    "MemoryPoolCompressedClassSpaceUsed" : 5,
+      |    "MemoryPoolCompressedClassSpaceMax" : 6,
+      |    "MemoryPoolPSEdenSpaceUsed" : 7,
+      |    "MemoryPoolPSEdenSpaceMax" : 8,
+      |    "MemoryPoolPSSurvivorSpaceUsed" : 9,
+      |    "MemoryPoolPSSurvivorSpaceMax" : 10,
+      |    "MemoryPoolPSOldGenUsed" : 11,
+      |    "MemoryPoolPSOldGenMax" : 12,
+      |    "JVMMaxMemory" : 13,
+      |    "JVMUsedMemory" : 14
       |  },
       |  "Task Metrics": {
       |    "Executor Deserialize Time": 300,
@@ -2933,7 +2976,21 @@ private[spark] object JsonProtocolSuite extends Assertions {
       |        "MinorGCTime": 90,
       |        "MajorGCCount": 2,
       |        "MajorGCTime": 20,
-      |        "TotalGCTime" : 80001
+      |        "TotalGCTime" : 80001,
+      |        "MemoryPoolCodeCacheUsed" : 1,
+      |        "MemoryPoolCodeCacheMax" : 2,
+      |        "MemoryPoolMetaspaceUsed" : 3,
+      |        "MemoryPoolMetaspaceMax" : 4,
+      |        "MemoryPoolCompressedClassSpaceUsed" : 5,
+      |        "MemoryPoolCompressedClassSpaceMax" : 6,
+      |        "MemoryPoolPSEdenSpaceUsed" : 7,
+      |        "MemoryPoolPSEdenSpaceMax" : 8,
+      |        "MemoryPoolPSSurvivorSpaceUsed" : 9,
+      |        "MemoryPoolPSSurvivorSpaceMax" : 10,
+      |        "MemoryPoolPSOldGenUsed" : 11,
+      |        "MemoryPoolPSOldGenMax" : 12,
+      |        "JVMMaxMemory" : 13,
+      |        "JVMUsedMemory" : 14
       |      }
       |    }
       |  ]
@@ -2968,7 +3025,21 @@ private[spark] object JsonProtocolSuite extends Assertions {
       |    "MinorGCTime": 90,
       |    "MajorGCCount": 2,
       |    "MajorGCTime": 20,
-      |    "TotalGCTime" : 80001
+      |    "TotalGCTime" : 80001,
+      |    "MemoryPoolCodeCacheUsed" : 1,
+      |    "MemoryPoolCodeCacheMax" : 2,
+      |    "MemoryPoolMetaspaceUsed" : 3,
+      |    "MemoryPoolMetaspaceMax" : 4,
+      |    "MemoryPoolCompressedClassSpaceUsed" : 5,
+      |    "MemoryPoolCompressedClassSpaceMax" : 6,
+      |    "MemoryPoolPSEdenSpaceUsed" : 7,
+      |    "MemoryPoolPSEdenSpaceMax" : 8,
+      |    "MemoryPoolPSSurvivorSpaceUsed" : 9,
+      |    "MemoryPoolPSSurvivorSpaceMax" : 10,
+      |    "MemoryPoolPSOldGenUsed" : 11,
+      |    "MemoryPoolPSOldGenMax" : 12,
+      |    "JVMMaxMemory" : 13,
+      |    "JVMUsedMemory" : 14
       |  }
       |}
     """.stripMargin
