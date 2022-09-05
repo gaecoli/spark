@@ -186,6 +186,47 @@ case object DirectPoolMemory extends MBeanExecutorMetricType(
 case object MappedPoolMemory extends MBeanExecutorMetricType(
   "java.nio:type=BufferPool,name=mapped")
 
+case object JVMMemoryPoolMetrics extends ExecutorMetricType {
+  val prefix: String = "MemoryPool"
+  val usedSuffix: String = "Used"
+  val maxSuffix: String = "Max"
+  override val names: Seq[String] = {
+    Seq(
+      "CodeCache", "Metaspace", "CompressedClassSpace", "PSEdenSpace", "PSSurvivorSpace", "PSOldGen"
+    ).flatten(name => Seq(s"$prefix$name$usedSuffix", s"$prefix$name$maxSuffix"))
+  }
+  val name2Idx: Map[String, Int] = names.zipWithIndex.toMap
+
+  override private[spark] def getMetricValues(memoryManager: MemoryManager): Array[Long] = {
+    val memoryPoolMetrics = new Array[Long](names.length)
+    ManagementFactory.getMemoryPoolMXBeans.asScala
+      .foreach { memoryPool =>
+        val metricName = memoryPool.getName.replace(" ", "")
+        val usage = memoryPool.getUsage
+        name2Idx.get(s"$prefix$metricName$usedSuffix")
+          .foreach(memoryPoolMetrics(_) = usage.getUsed)
+        name2Idx.get(s"$prefix$metricName$maxSuffix")
+          .foreach(memoryPoolMetrics(_) = usage.getMax)
+      }
+    memoryPoolMetrics
+  }
+}
+
+case object JVMMemoryMetrics extends ExecutorMetricType {
+  override private[spark] def names = Seq(
+    "JVMMaxMemory",
+    "JVMUsedMemory"
+  )
+
+  override private[spark] def getMetricValues(memoryManager: MemoryManager): Array[Long] = {
+    val memoryMetrics = new Array[Long](names.length)
+    val rt = Runtime.getRuntime
+    memoryMetrics(0) = rt.maxMemory()
+    memoryMetrics(1) = rt.totalMemory() - rt.freeMemory()
+    memoryMetrics
+  }
+}
+
 private[spark] object ExecutorMetricType {
 
   // List of all executor metric getters
@@ -201,7 +242,9 @@ private[spark] object ExecutorMetricType {
     DirectPoolMemory,
     MappedPoolMemory,
     ProcessTreeMetrics,
-    GarbageCollectionMetrics
+    GarbageCollectionMetrics,
+    JVMMemoryPoolMetrics,
+    JVMMemoryMetrics
   )
 
   val (metricToOffset, numMetrics) = {

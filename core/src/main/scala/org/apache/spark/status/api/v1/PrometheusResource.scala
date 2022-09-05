@@ -25,6 +25,7 @@ import org.glassfish.jersey.servlet.ServletContainer
 
 import org.apache.spark.{SPARK_REVISION, SPARK_VERSION_SHORT}
 import org.apache.spark.annotation.Experimental
+import org.apache.spark.metrics._
 import org.apache.spark.ui.SparkUI
 
 /**
@@ -38,6 +39,22 @@ import org.apache.spark.ui.SparkUI
 @Experimental
 @Path("/executors")
 private[v1] class PrometheusResource extends ApiRequestContext {
+  val namesBytes: Array[String] = IndexedSeq(
+    JVMHeapMemory,
+    JVMOffHeapMemory,
+    OnHeapExecutionMemory,
+    OffHeapExecutionMemory,
+    OnHeapStorageMemory,
+    OffHeapStorageMemory,
+    OnHeapUnifiedMemory,
+    OffHeapUnifiedMemory,
+    DirectPoolMemory,
+    MappedPoolMemory,
+    ProcessTreeMetrics,
+    JVMMemoryPoolMetrics,
+    JVMMemoryMetrics
+  ).flatten(_.names).toArray
+
   @GET
   @Path("prometheus")
   @Produces(Array(MediaType.TEXT_PLAIN))
@@ -76,25 +93,7 @@ private[v1] class PrometheusResource extends ApiRequestContext {
           s"${m.totalOffHeapStorageMemory}\n")
       }
       executor.peakMemoryMetrics.foreach { m =>
-        val names = Array(
-          "JVMHeapMemory",
-          "JVMOffHeapMemory",
-          "OnHeapExecutionMemory",
-          "OffHeapExecutionMemory",
-          "OnHeapStorageMemory",
-          "OffHeapStorageMemory",
-          "OnHeapUnifiedMemory",
-          "OffHeapUnifiedMemory",
-          "DirectPoolMemory",
-          "MappedPoolMemory",
-          "ProcessTreeJVMVMemory",
-          "ProcessTreeJVMRSSMemory",
-          "ProcessTreePythonVMemory",
-          "ProcessTreePythonRSSMemory",
-          "ProcessTreeOtherVMemory",
-          "ProcessTreeOtherRSSMemory"
-        )
-        names.foreach { name =>
+        namesBytes.foreach { name =>
           sb.append(s"$prefix${name}_bytes$labels ${m.getMetricValue(name)}\n")
         }
         Seq("MinorGCCount", "MajorGCCount").foreach { name =>
