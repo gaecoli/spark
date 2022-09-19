@@ -1049,7 +1049,7 @@ private[spark] class TaskSetManager(
     val maybeShuffleMapOutputLoss = isShuffleMapTasks &&
       !sched.sc.shuffleDriverComponents.supportsReliableStorage() &&
       (reason.isInstanceOf[ExecutorDecommission] || !env.blockManager.externalShuffleServiceEnabled)
-    if (maybeShuffleMapOutputLoss && !isZombie) {
+    if (!conf.isRssEnable && maybeShuffleMapOutputLoss && !isZombie) {
       for ((tid, info) <- taskInfos if info.executorId == execId) {
         val index = info.index
         lazy val isShuffleMapOutputAvailable = reason match {

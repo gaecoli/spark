@@ -580,6 +580,8 @@ class SparkConf(loadDefaults: Boolean) extends Cloneable with Logging with Seria
     Utils.redact(this, getAll).sorted.map { case (k, v) => k + "=" + v }.mkString("\n")
   }
 
+  def isRssEnable: Boolean = get("spark.shuffle.manager", "sort")
+    .equals("org.apache.spark.shuffle.rss.RssShuffleManager")
 }
 
 private[spark] object SparkConf extends Logging {
