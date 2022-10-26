@@ -90,7 +90,11 @@
     "MemoryPoolPSOldGenUsed" : 0,
     "MemoryPoolPSOldGenMax" : 0,
     "JVMMaxMemory" : 0,
-    "JVMUsedMemory" : 0
+    "JVMUsedMemory" : 0,
+    "PodMaxMemory" : 0,
+    "PodRSSMemory" : 0,
+    "PodCacheMemory" : 0,
+    "PodUsedMemory" : 0
   }
 }, {
   "status" : "COMPLETE",
@@ -184,7 +188,11 @@
     "MemoryPoolPSOldGenUsed" : 0,
     "MemoryPoolPSOldGenMax" : 0,
     "JVMMaxMemory" : 0,
-    "JVMUsedMemory" : 0
+    "JVMUsedMemory" : 0,
+    "PodMaxMemory" : 0,
+    "PodRSSMemory" : 0,
+    "PodCacheMemory" : 0,
+    "PodUsedMemory" : 0
   }
 }, {
   "status" : "COMPLETE",
@@ -278,6 +286,10 @@
     "MemoryPoolPSOldGenUsed" : 0,
     "MemoryPoolPSOldGenMax" : 0,
     "JVMMaxMemory" : 0,
-    "JVMUsedMemory" : 0
+    "JVMUsedMemory" : 0,
+    "PodMaxMemory" : 0,
+    "PodRSSMemory" : 0,
+    "PodCacheMemory" : 0,
+    "PodUsedMemory" : 0
   }
 } ]

@@ -62,7 +62,11 @@
     "MemoryPoolPSOldGenUsed" : 0,
     "MemoryPoolPSOldGenMax" : 0,
     "JVMMaxMemory" : 0,
-    "JVMUsedMemory" : 0
+    "JVMUsedMemory" : 0,
+    "PodMaxMemory" : 0,
+    "PodRSSMemory" : 0,
+    "PodCacheMemory" : 0,
+    "PodUsedMemory" : 0
   },
   "attributes" : { },
   "resources" : { },
@@ -136,7 +140,11 @@
     "MemoryPoolPSOldGenUsed" : 0,
     "MemoryPoolPSOldGenMax" : 0,
     "JVMMaxMemory" : 0,
-    "JVMUsedMemory" : 0
+    "JVMUsedMemory" : 0,
+    "PodMaxMemory" : 0,
+    "PodRSSMemory" : 0,
+    "PodCacheMemory" : 0,
+    "PodUsedMemory" : 0
   },
   "attributes" : {
     "NM_HTTP_ADDRESS" : "test-3.vpc.company.com:8042",
@@ -220,7 +228,11 @@
     "MemoryPoolPSOldGenUsed" : 0,
     "MemoryPoolPSOldGenMax" : 0,
     "JVMMaxMemory" : 0,
-    "JVMUsedMemory" : 0
+    "JVMUsedMemory" : 0,
+    "PodMaxMemory" : 0,
+    "PodRSSMemory" : 0,
+    "PodCacheMemory" : 0,
+    "PodUsedMemory" : 0
   },
   "attributes" : {
     "NM_HTTP_ADDRESS" : "test-4.vpc.company.com:8042",
@@ -304,7 +316,11 @@
     "MemoryPoolPSOldGenUsed" : 0,
     "MemoryPoolPSOldGenMax" : 0,
     "JVMMaxMemory" : 0,
-    "JVMUsedMemory" : 0
+    "JVMUsedMemory" : 0,
+    "PodMaxMemory" : 0,
+    "PodRSSMemory" : 0,
+    "PodCacheMemory" : 0,
+    "PodUsedMemory" : 0
   },
   "attributes" : {
     "NM_HTTP_ADDRESS" : "test-2.vpc.company.com:8042",
