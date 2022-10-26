@@ -16,11 +16,13 @@
  */
 package org.apache.spark.metrics
 
+import java.io.File
 import java.lang.management.{BufferPoolMXBean, ManagementFactory}
 import javax.management.ObjectName
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
+import scala.io.Source
 
 import org.apache.spark.SparkEnv
 import org.apache.spark.executor.ProcfsMetricsGetter
@@ -227,6 +229,44 @@ case object JVMMemoryMetrics extends ExecutorMetricType {
   }
 }
 
+case object PodMemoryMetrics extends ExecutorMetricType {
+  override private[spark] def names = Seq(
+    "PodMaxMemory",
+    "PodRSSMemory",
+    "PodCacheMemory",
+    "PodUsedMemory"
+  )
+
+  override private[spark] def getMetricValues(memoryManager: MemoryManager): Array[Long] = {
+    val memoryStat = {
+      try {
+        val file = new File("/sys/fs/cgroup/memory/memory.stat")
+        if (file.exists && file.canRead) {
+          val source = Source.fromFile(file)
+          val ret = source.getLines().toArray
+          source.close()
+          ret.toSeq
+        } else Seq.empty
+      } catch {
+        case _: Throwable =>
+          Seq.empty
+      }
+    }
+      .flatMap {str =>
+        val split = str.split(" ")
+        if (split.length == 2) Some(split.head -> split.last.toLong)
+        else None
+      }.toMap
+
+    val memoryMetrics = new Array[Long](names.length)
+    memoryMetrics(0) = memoryStat.getOrElse("hierarchical_memory_limit", 0L)
+    memoryMetrics(1) = memoryStat.getOrElse("total_rss", 0L)
+    memoryMetrics(2) = memoryStat.getOrElse("total_cache", 0L)
+    memoryMetrics(3) = memoryMetrics(1) + memoryMetrics(2)
+    memoryMetrics
+  }
+}
+
 private[spark] object ExecutorMetricType {
 
   // List of all executor metric getters
@@ -244,7 +284,8 @@ private[spark] object ExecutorMetricType {
     ProcessTreeMetrics,
     GarbageCollectionMetrics,
     JVMMemoryPoolMetrics,
-    JVMMemoryMetrics
+    JVMMemoryMetrics,
+    PodMemoryMetrics
   )
 
   val (metricToOffset, numMetrics) = {

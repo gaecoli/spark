@@ -52,7 +52,8 @@ private[v1] class PrometheusResource extends ApiRequestContext {
     MappedPoolMemory,
     ProcessTreeMetrics,
     JVMMemoryPoolMetrics,
-    JVMMemoryMetrics
+    JVMMemoryMetrics,
+    PodMemoryMetrics
   ).flatten(_.names).toArray
 
   @GET

@@ -1769,7 +1769,11 @@ private[spark] object JsonProtocolSuite extends Assertions {
       |    "MemoryPoolPSOldGenUsed" : 11,
       |    "MemoryPoolPSOldGenMax" : 12,
       |    "JVMMaxMemory" : 13,
-      |    "JVMUsedMemory" : 14
+      |    "JVMUsedMemory" : 14,
+      |    "PodMaxMemory" : 0,
+      |    "PodRSSMemory" : 0,
+      |    "PodCacheMemory" : 0,
+      |    "PodUsedMemory" : 0
       |  },
       |  "Task Metrics": {
       |    "Executor Deserialize Time": 300,
@@ -1922,7 +1926,11 @@ private[spark] object JsonProtocolSuite extends Assertions {
       |    "MemoryPoolPSOldGenUsed" : 11,
       |    "MemoryPoolPSOldGenMax" : 12,
       |    "JVMMaxMemory" : 13,
-      |    "JVMUsedMemory" : 14
+      |    "JVMUsedMemory" : 14,
+      |    "PodMaxMemory" : 0,
+      |    "PodRSSMemory" : 0,
+      |    "PodCacheMemory" : 0,
+      |    "PodUsedMemory" : 0
       |  },
       |  "Task Metrics": {
       |    "Executor Deserialize Time": 300,
@@ -2075,7 +2083,11 @@ private[spark] object JsonProtocolSuite extends Assertions {
       |    "MemoryPoolPSOldGenUsed" : 11,
       |    "MemoryPoolPSOldGenMax" : 12,
       |    "JVMMaxMemory" : 13,
-      |    "JVMUsedMemory" : 14
+      |    "JVMUsedMemory" : 14,
+      |    "PodMaxMemory" : 0,
+      |    "PodRSSMemory" : 0,
+      |    "PodCacheMemory" : 0,
+      |    "PodUsedMemory" : 0
       |  },
       |  "Task Metrics": {
       |    "Executor Deserialize Time": 300,
@@ -2990,7 +3002,11 @@ private[spark] object JsonProtocolSuite extends Assertions {
       |        "MemoryPoolPSOldGenUsed" : 11,
       |        "MemoryPoolPSOldGenMax" : 12,
       |        "JVMMaxMemory" : 13,
-      |        "JVMUsedMemory" : 14
+      |        "JVMUsedMemory" : 14,
+      |        "PodMaxMemory" : 0,
+      |        "PodRSSMemory" : 0,
+      |        "PodCacheMemory" : 0,
+      |        "PodUsedMemory" : 0
       |      }
       |    }
       |  ]
@@ -3039,7 +3055,11 @@ private[spark] object JsonProtocolSuite extends Assertions {
       |    "MemoryPoolPSOldGenUsed" : 11,
       |    "MemoryPoolPSOldGenMax" : 12,
       |    "JVMMaxMemory" : 13,
-      |    "JVMUsedMemory" : 14
+      |    "JVMUsedMemory" : 14,
+      |    "PodMaxMemory" : 0,
+      |    "PodRSSMemory" : 0,
+      |    "PodCacheMemory" : 0,
+      |    "PodUsedMemory" : 0
       |  }
       |}
     """.stripMargin
