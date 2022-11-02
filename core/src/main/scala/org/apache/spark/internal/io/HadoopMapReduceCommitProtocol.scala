@@ -85,7 +85,7 @@ class HadoopMapReduceCommitProtocol(
    * [[HadoopMapReduceCommitProtocol#path]] need not be a valid [[org.apache.hadoop.fs.Path]] for
    * committers not writing to distributed file systems.
    */
-  private val hasValidPath = Try { new Path(path) }.isSuccess
+  protected val hasValidPath = Try { new Path(path) }.isSuccess
 
   /**
    * Tracks files staged by this task for absolute output paths. These outputs are not managed by
@@ -100,7 +100,7 @@ class HadoopMapReduceCommitProtocol(
    * e.g. a=1/b=2. Files under these partitions will be saved into staging directory and moved to
    * destination directory at the end, if `stagingDirOverwrite` is true.
    */
-  @transient private var partitionPaths: mutable.Set[String] = null
+  @transient protected var partitionPaths: mutable.Set[String] = null
 
   /**
    * The staging directory of this write job. Spark uses it to deal with files with absolute output

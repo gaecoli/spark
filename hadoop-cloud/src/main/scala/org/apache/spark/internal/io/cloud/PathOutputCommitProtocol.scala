@@ -17,14 +17,12 @@
 
 package org.apache.spark.internal.io.cloud
 
-import java.io.IOException
-
 import org.apache.hadoop.fs.{Path, StreamCapabilities}
-import org.apache.hadoop.mapreduce.TaskAttemptContext
+import org.apache.hadoop.fs.s3a.commit.magic.MagicS3GuardCommitter
+import org.apache.hadoop.mapreduce.{JobContext, TaskAttemptContext}
 import org.apache.hadoop.mapreduce.lib.output.{FileOutputCommitter, PathOutputCommitter, PathOutputCommitterFactory}
 
-import org.apache.spark.internal.io.FileNameSpec
-import org.apache.spark.internal.io.HadoopMapReduceCommitProtocol
+import org.apache.spark.internal.io.{FileCommitProtocol, FileNameSpec, HadoopMapReduceCommitProtocol}
 
 /**
  * Spark Commit protocol for Path Output Committers.
@@ -59,14 +57,14 @@ class PathOutputCommitProtocol(
     jobId: String,
     dest: String,
     stagingDirOverwrite: Boolean = false)
-  extends HadoopMapReduceCommitProtocol(jobId, dest, false) with Serializable {
+  extends HadoopMapReduceCommitProtocol(jobId, dest, stagingDirOverwrite) with Serializable {
 
-  if (stagingDirOverwrite) {
-    // until there's explicit extensions to the PathOutputCommitProtocols
-    // to support the spark mechanism, it's left to the individual committer
-    // choice to handle partitioning.
-    throw new IOException(PathOutputCommitProtocol.UNSUPPORTED)
-  }
+//  if (stagingDirOverwrite) {
+//    // until there's explicit extensions to the PathOutputCommitProtocols
+//    // to support the spark mechanism, it's left to the individual committer
+//    // choice to handle partitioning.
+//    throw new IOException(PathOutputCommitProtocol.UNSUPPORTED)
+//  }
 
   /** The committer created. */
   @transient private var committer: PathOutputCommitter = _
@@ -137,6 +135,29 @@ class PathOutputCommitProtocol(
     committer
   }
 
+  override def commitJob(jobContext: JobContext,
+                         taskCommits: Seq[FileCommitProtocol.TaskCommitMessage]): Unit = {
+    if (committer.isInstanceOf[MagicS3GuardCommitter]) {
+      // If this is s3 magic, then we should remove old files before commit
+      if (hasValidPath && stagingDirOverwrite) {
+        val (_, allPartitionPaths) =
+          taskCommits.map(_.obj.asInstanceOf[(Map[String, String], Set[String])]).unzip
+        val hadoopConfiguration = jobContext.getConfiguration
+        val fs = stagingDir.getFileSystem(hadoopConfiguration)
+        val partitionPaths = allPartitionPaths.foldLeft(Set[String]())(_ ++ _)
+        logDebug(s"Clean up default partition directories for overwriting: $partitionPaths")
+        for (part <- partitionPaths) {
+          val finalPartPath = new Path(dest, part)
+          if (!fs.delete(finalPartPath, true) && !fs.exists(finalPartPath.getParent)) {
+            fs.mkdirs(finalPartPath.getParent)
+          }
+        }
+      }
+      committer.commitJob(jobContext)
+    } else {
+      super.commitJob(jobContext, taskCommits)
+    }
+  }
 
   /**
    * Does the instantiated committer support dynamic partitions?
@@ -166,6 +187,11 @@ class PathOutputCommitProtocol(
     val parent = dir.map {
       d => new Path(workDir, d)
     }.getOrElse(workDir)
+    if (stagingDirOverwrite) {
+      assert(dir.isDefined,
+        "The dataset to be written must be partitioned when stagingDirOverwrite is true.")
+      partitionPaths += dir.get
+    }
     val file = new Path(parent, getFilename(taskContext, spec))
     logTrace(s"Creating task file $file for dir $dir and spec $spec")
     file.toString

@@ -106,31 +106,31 @@ private[spark] class Client(
     val confFilesMap = KubernetesClientUtils.buildSparkConfDirFilesMap(configMapName,
       conf.sparkConf, resolvedDriverSpec.systemProperties)
     val configMap = KubernetesClientUtils.buildConfigMap(configMapName, confFilesMap +
-        (KUBERNETES_NAMESPACE.key -> conf.namespace))
+      (KUBERNETES_NAMESPACE.key -> conf.namespace))
 
     // The include of the ENV_VAR for "SPARK_CONF_DIR" is to allow for the
     // Spark command builder to pickup on the Java Options present in the ConfigMap
     val resolvedDriverContainer = new ContainerBuilder(resolvedDriverSpec.pod.container)
       .addNewEnv()
-        .withName(ENV_SPARK_CONF_DIR)
-        .withValue(SPARK_CONF_DIR_INTERNAL)
-        .endEnv()
+      .withName(ENV_SPARK_CONF_DIR)
+      .withValue(SPARK_CONF_DIR_INTERNAL)
+      .endEnv()
       .addNewVolumeMount()
-        .withName(SPARK_CONF_VOLUME_DRIVER)
-        .withMountPath(SPARK_CONF_DIR_INTERNAL)
-        .endVolumeMount()
+      .withName(SPARK_CONF_VOLUME_DRIVER)
+      .withMountPath(SPARK_CONF_DIR_INTERNAL)
+      .endVolumeMount()
       .build()
     val resolvedDriverPod = new PodBuilder(resolvedDriverSpec.pod.pod)
       .editSpec()
-        .addToContainers(resolvedDriverContainer)
-        .addNewVolume()
-          .withName(SPARK_CONF_VOLUME_DRIVER)
-          .withNewConfigMap()
-            .withItems(KubernetesClientUtils.buildKeyToPathObjects(confFilesMap).asJava)
-            .withName(configMapName)
-            .endConfigMap()
-          .endVolume()
-        .endSpec()
+      .addToContainers(resolvedDriverContainer)
+      .addNewVolume()
+      .withName(SPARK_CONF_VOLUME_DRIVER)
+      .withNewConfigMap()
+      .withItems(KubernetesClientUtils.buildKeyToPathObjects(confFilesMap).asJava)
+      .withName(configMapName)
+      .endConfigMap()
+      .endVolume()
+      .endSpec()
       .build()
     val driverPodName = resolvedDriverPod.getMetadata.getName
 
@@ -199,9 +199,6 @@ private[spark] class Client(
           break
         }
       }
-    } else {
-      logInfo(s"Deployed Spark application ${conf.appName} with application ID ${conf.appId} " +
-        s"and submission ID $sId into Kubernetes")
     }
   }
 }
