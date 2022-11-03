@@ -93,7 +93,7 @@ class HadoopMapReduceCommitProtocol(
    *
    * The mapping is from the temp output path to the final desired output path of the file.
    */
-  @transient private var addedAbsPathFiles: mutable.Map[String, String] = null
+  @transient protected var addedAbsPathFiles: mutable.Map[String, String] = null
 
   /**
    * Tracks partitions with default path that have new files written into them by this task,

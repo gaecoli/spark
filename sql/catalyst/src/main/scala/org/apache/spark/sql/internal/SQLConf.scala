@@ -3170,6 +3170,16 @@ object SQLConf {
       .checkValues(PartitionOverwriteMode.values.map(_.toString))
       .createWithDefault(PartitionOverwriteMode.STATIC.toString)
 
+  val PARTITION_LOCATION_USE_DEFAULT =
+    buildConf("spark.sql.sources.partitionLocationUseDefault")
+      .doc("Whether to follow the default partition path specification " +
+      "rather than user-defined partition paths when insert overwrite a partition table." +
+      "When the location of a partition table is A, its default partition path specification " +
+      "is: A/part=val/[part2=val2/[...]].")
+      .version("3.4.0")
+      .booleanConf
+      .createWithDefault(false)
+
   object StoreAssignmentPolicy extends Enumeration {
     val ANSI, LEGACY, STRICT = Value
   }
@@ -5089,6 +5099,9 @@ class SQLConf extends Serializable with Logging with SqlApiConf {
 
   def partitionOverwriteMode: PartitionOverwriteMode.Value =
     PartitionOverwriteMode.withName(getConf(PARTITION_OVERWRITE_MODE))
+
+  def partitionLocationFollowDefault: Boolean =
+    getConf(PARTITION_LOCATION_USE_DEFAULT)
 
   def storeAssignmentPolicy: StoreAssignmentPolicy.Value =
     StoreAssignmentPolicy.withName(getConf(STORE_ASSIGNMENT_POLICY))

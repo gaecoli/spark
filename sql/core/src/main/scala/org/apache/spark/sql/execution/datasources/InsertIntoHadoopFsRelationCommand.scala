@@ -79,6 +79,9 @@ case class InsertIntoHadoopFsRelationCommand(
     V1WritesUtils.getSortOrder(outputColumns, partitionColumns, bucketSpec, options,
       staticPartitions.size)
 
+  private[sql] lazy val partLocFollowDefault: Boolean =
+    mode == SaveMode.Overwrite && conf.partitionLocationFollowDefault
+
   override def run(sparkSession: SparkSession, child: SparkPlan): Seq[Row] = {
     // Most formats don't do well with duplicate columns, so lets not allow that
     SchemaUtils.checkColumnNameDuplication(
@@ -96,6 +99,7 @@ case class InsertIntoHadoopFsRelationCommand(
 
     var initialMatchingPartitions: Seq[TablePartitionSpec] = Nil
     var customPartitionLocations: Map[TablePartitionSpec, String] = Map.empty
+    var clearCustomPartitionLocations: Map[TablePartitionSpec, String] = Map.empty
     var matchingPartitions: Seq[CatalogTablePartition] = Seq.empty
 
     // When partitions are tracked by the catalog, compute all custom partition locations that
@@ -105,7 +109,14 @@ case class InsertIntoHadoopFsRelationCommand(
         catalogTable.get.identifier, Some(staticPartitions))
       initialMatchingPartitions = matchingPartitions.map(_.spec)
       customPartitionLocations = getCustomPartitionLocations(
-        fs, catalogTable.get, qualifiedOutputPath, matchingPartitions)
+        fs, catalogTable.get, qualifiedOutputPath, matchingPartitions,
+        partLocFollowDefault)
+      clearCustomPartitionLocations =
+        if (partLocFollowDefault) {
+          getCustomPartitionLocations(
+            fs, catalogTable.get, qualifiedOutputPath, matchingPartitions,
+            partitionLocationFollowDefault = false)
+        } else customPartitionLocations
     }
 
     val jobId = java.util.UUID.randomUUID().toString
@@ -129,7 +140,8 @@ case class InsertIntoHadoopFsRelationCommand(
             // For dynamic partition overwrite, do not delete partition directories ahead.
             true
           } else {
-            deleteMatchingPartitions(fs, qualifiedOutputPath, customPartitionLocations, committer)
+            deleteMatchingPartitions(fs, qualifiedOutputPath, clearCustomPartitionLocations,
+              committer)
             true
           }
         case (SaveMode.Overwrite, _) | (SaveMode.ErrorIfExists, false) =>
@@ -146,6 +158,17 @@ case class InsertIntoHadoopFsRelationCommand(
       def refreshUpdatedPartitions(updatedPartitionPaths: Set[String]): Unit = {
         val updatedPartitions = updatedPartitionPaths.map(PartitioningUtils.parsePathFragment)
         if (partitionsTrackedByCatalog) {
+          lazy val needChangeLocPartitions =
+            updatedPartitions.intersect(initialMatchingPartitions.toSet)
+          if (partLocFollowDefault && needChangeLocPartitions.nonEmpty) {
+            AlterTableDropPartitionCommand(
+              catalogTable.get.identifier, needChangeLocPartitions.toSeq,
+              ifExists = true, purge = false, retainData = true /* already deleted */
+            ).run(sparkSession)
+            AlterTableAddPartitionCommand(
+              catalogTable.get.identifier, needChangeLocPartitions.toSeq.map(p => (p, None)),
+              ifNotExists = true).run(sparkSession)
+          }
           val newPartitions = updatedPartitions -- initialMatchingPartitions
           if (newPartitions.nonEmpty) {
             AlterTableAddPartitionCommand(
@@ -262,7 +285,9 @@ case class InsertIntoHadoopFsRelationCommand(
       fs: FileSystem,
       table: CatalogTable,
       qualifiedOutputPath: Path,
-      partitions: Seq[CatalogTablePartition]): Map[TablePartitionSpec, String] = {
+      partitions: Seq[CatalogTablePartition],
+      partitionLocationFollowDefault: Boolean): Map[TablePartitionSpec, String] = {
+    if (partitionLocationFollowDefault) return Map.empty
     partitions.flatMap { p =>
       val defaultLocation = qualifiedOutputPath.suffix(
         "/" + PartitioningUtils.getPathFragment(p.spec, table.partitionSchema)).toString

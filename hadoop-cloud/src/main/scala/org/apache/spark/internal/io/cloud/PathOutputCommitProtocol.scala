@@ -22,7 +22,7 @@ import java.io.IOException
 import org.apache.hadoop.fs.{Path, StreamCapabilities}
 import org.apache.hadoop.fs.s3a.commit.magic.MagicS3GuardCommitter
 import org.apache.hadoop.mapreduce.{JobContext, TaskAttemptContext}
-import org.apache.hadoop.mapreduce.lib.output.{FileOutputCommitter, PathOutputCommitter, PathOutputCommitterFactory}
+import org.apache.hadoop.mapreduce.lib.output.{FileOutputCommitter, FileOutputCommitterFactory, FileOutputFormat, PathOutputCommitter, PathOutputCommitterFactory}
 
 import org.apache.spark.internal.io.{FileCommitProtocol, FileNameSpec, HadoopMapReduceCommitProtocol}
 
@@ -93,7 +93,16 @@ class PathOutputCommitProtocol(
    */
   override protected def setupCommitter(context: TaskAttemptContext): PathOutputCommitter = {
     logTrace(s"Setting up committer for path $destination")
-    committer = PathOutputCommitterFactory.createCommitter(destPath, context)
+    val factory = PathOutputCommitterFactory.getCommitterFactory(destPath, context.getConfiguration)
+    committer =
+      factory match {
+        case fileOutputCommitterFactory: FileOutputCommitterFactory =>
+          fileOutputCommitterFactory.createOutputCommitter(
+            Option(FileOutputFormat.getOutputPath(context)).getOrElse(destPath),
+            context)
+        case _ =>
+          factory.createOutputCommitter(destPath, context)
+      }
 
     // Special feature to force out the FileOutputCommitter, so as to guarantee
     // that the binding is working properly.
@@ -102,9 +111,6 @@ class PathOutputCommitProtocol(
     if (rejectFileOutput && committer.isInstanceOf[FileOutputCommitter]) {
       // the output format returned a file output format committer, which
       // is exactly what we do not want. So switch back to the factory.
-      val factory = PathOutputCommitterFactory.getCommitterFactory(
-        destPath,
-        context.getConfiguration)
       logTrace(s"Using committer factory $factory")
       committer = factory.createOutputCommitter(destPath, context)
     }
@@ -138,19 +144,30 @@ class PathOutputCommitProtocol(
 
   override def commitJob(jobContext: JobContext,
                          taskCommits: Seq[FileCommitProtocol.TaskCommitMessage]): Unit = {
-    if (committer.isInstanceOf[MagicS3GuardCommitter]) {
+    if (isMagicS3Committer) {
       // If this is s3 magic, then we should remove old files before commit
-      if (hasValidPath && stagingDirOverwrite) {
-        val (_, allPartitionPaths) =
+      if (hasValidPath) {
+        val (allAbsPathFiles, allPartitionPaths) =
           taskCommits.map(_.obj.asInstanceOf[(Map[String, String], Set[String])]).unzip
         val hadoopConfiguration = jobContext.getConfiguration
         val fs = stagingDir.getFileSystem(hadoopConfiguration)
+        val filesToMove = allAbsPathFiles.foldLeft(Map[String, String]())(_ ++ _)
+        val absParentPaths = filesToMove.values.map(new Path(_).getParent).toSet
+        if (stagingDirOverwrite) {
+          logDebug(s"Clean up absolute partition directories for overwriting: $absParentPaths")
+          absParentPaths.foreach(path => path.getFileSystem(hadoopConfiguration).delete(path, true))
+        }
+        logDebug(s"Create absolute parent directories: $absParentPaths")
+        absParentPaths.foreach(path => path.getFileSystem(hadoopConfiguration).mkdirs(path))
+
         val partitionPaths = allPartitionPaths.foldLeft(Set[String]())(_ ++ _)
         logDebug(s"Clean up default partition directories for overwriting: $partitionPaths")
-        for (part <- partitionPaths) {
-          val finalPartPath = new Path(dest, part)
-          if (!fs.delete(finalPartPath, true) && !fs.exists(finalPartPath.getParent)) {
-            fs.mkdirs(finalPartPath.getParent)
+        if (stagingDirOverwrite) {
+          for (part <- partitionPaths) {
+            val finalPartPath = new Path(dest, part)
+            if (!fs.delete(finalPartPath, true) && !fs.exists(finalPartPath.getParent)) {
+              fs.mkdirs(finalPartPath.getParent)
+            }
           }
         }
       }
@@ -167,11 +184,14 @@ class PathOutputCommitProtocol(
    */
   private def supportsDynamicPartitions = {
     committer.isInstanceOf[FileOutputCommitter] ||
+      isMagicS3Committer ||
       (committer.isInstanceOf[StreamCapabilities] &&
         committer.asInstanceOf[StreamCapabilities]
-          .hasCapability(CAPABILITY_DYNAMIC_PARTITIONING)) ||
-      committer.isInstanceOf[MagicS3GuardCommitter]
+          .hasCapability(CAPABILITY_DYNAMIC_PARTITIONING))
   }
+
+  private def isMagicS3Committer: Boolean =
+    committer.isInstanceOf[MagicS3GuardCommitter]
 
   /**
    * Does the instantiated committer support dynamic partitions?
@@ -207,6 +227,8 @@ class PathOutputCommitProtocol(
       partitionPaths += dir.get
     }
     val file = new Path(parent, getFilename(taskContext, spec))
+    logInfo(s"Creating task file $file for dir $dir and spec $spec," +
+      s" committer is: ${committer.getClass}, ${committer.getOutputPath}, ${committer.getWorkPath}")
     logTrace(s"Creating task file $file for dir $dir and spec $spec")
     file.toString
   }
@@ -226,12 +248,24 @@ class PathOutputCommitProtocol(
     absoluteDir: String,
     spec: FileNameSpec): String = {
 
-    if (supportsDynamicPartitions) {
+    if (isMagicS3Committer) {
+      val tmpAbsPath = super.newTaskTempFileAbsPath(taskContext, absoluteDir, spec)
+      val absPath = addedAbsPathFiles(tmpAbsPath)
+      if (!isS3APath(new Path(absPath))) {
+        throw new RuntimeException(s"Magic s3a output: absolute output location " +
+          s"not supported for $absPath")
+      }
+      absPath
+    } else if (supportsDynamicPartitions) {
       super.newTaskTempFileAbsPath(taskContext, absoluteDir, spec)
     } else {
       throw new UnsupportedOperationException(s"Absolute output locations not supported" +
         s" by committer $committer")
     }
+  }
+
+  def isS3APath(path: Path): Boolean = {
+    path.toUri.getScheme.equals("s3a")
   }
 }
 
