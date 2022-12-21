@@ -25,6 +25,7 @@ import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.catalyst.util.CharVarcharUtils
 import org.apache.spark.sql.errors.QueryCompilationErrors
 import org.apache.spark.sql.execution.command.{DataWritingCommand, LeafRunnableCommand}
+import org.apache.spark.sql.util.FordealAuthUtils
 
 /**
  * Create table and insert the query result into it.
@@ -47,6 +48,7 @@ case class CreateHiveTableAsSelectCommand(
   override def run(sparkSession: SparkSession): Seq[Row] = {
     val catalog = sparkSession.sessionState.catalog
     val tableExists = catalog.tableExists(tableIdentifier)
+    val tableWithOwner = FordealAuthUtils.getTableWithOwner(tableDesc, sparkSession)
 
     if (tableExists) {
       assert(mode != SaveMode.Overwrite,
@@ -60,11 +62,11 @@ case class CreateHiveTableAsSelectCommand(
         return Seq.empty
       }
 
-      val command = getWritingCommand(tableDesc, tableExists = true)
+      val command = getWritingCommand(tableWithOwner, tableExists = true)
       val qe = sparkSession.sessionState.executePlan(command)
       qe.assertCommandExecuted()
     } else {
-      tableDesc.storage.locationUri.foreach { p =>
+      tableWithOwner.storage.locationUri.foreach { p =>
         DataWritingCommand.assertEmptyRootPath(p, mode, sparkSession.sessionState.newHadoopConf)
       }
       // TODO ideally, we should get the output data ready first and then
@@ -73,12 +75,12 @@ case class CreateHiveTableAsSelectCommand(
       val outputColumns = DataWritingCommand.logicalPlanOutputWithNames(query, outputColumnNames)
       val tableSchema = CharVarcharUtils.getRawSchema(
         outputColumns.toStructType, sparkSession.sessionState.conf)
-      assert(tableDesc.schema.isEmpty)
-      catalog.createTable(tableDesc.copy(schema = tableSchema), ignoreIfExists = false)
+      assert(tableWithOwner.schema.isEmpty)
+      catalog.createTable(tableWithOwner.copy(schema = tableSchema), ignoreIfExists = false)
 
       try {
         // Read back the metadata of the table which was created just now.
-        val createdTableMeta = catalog.getTableMetadata(tableDesc.identifier)
+        val createdTableMeta = catalog.getTableMetadata(tableWithOwner.identifier)
         val command = getWritingCommand(createdTableMeta, tableExists = false)
         val qe = sparkSession.sessionState.executePlan(command)
         qe.assertCommandExecuted()

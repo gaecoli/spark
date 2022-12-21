@@ -18,10 +18,12 @@
 package org.apache.spark.sql.util
 
 import org.apache.spark.annotation.Private
+import org.apache.spark.internal.Logging
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.catalyst.catalog.CatalogTable
 
 @Private
-object FordealAuthUtils {
+object FordealAuthUtils extends Logging {
   final private val ENV_EMAIL_KEY = "FORDEAL_USER_EMAIL";
   final private val USER_EMAIL_KEY = "fordeal.session.user";
   final private val SPARK_USER_EMAIL_KEY = s"spark.$USER_EMAIL_KEY";
@@ -33,6 +35,14 @@ object FordealAuthUtils {
         .orElse(sparkSession.conf.getOption(SPARK_USER_EMAIL_KEY))
         .getOrElse(System.getenv(ENV_EMAIL_KEY))
     ).getOrElse("")
+  }
+
+  def getTableWithOwner(table: CatalogTable, sparkSession: SparkSession): CatalogTable = {
+    log.info(s"=== table provider:${table.provider}, " +
+      s" fordeal.session.user = " +
+      s"${FordealAuthUtils.getAuthUser(sparkSession)}")
+
+    table.copy(owner = FordealAuthUtils.getAuthUser(sparkSession))
   }
 
 }

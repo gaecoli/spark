@@ -170,13 +170,7 @@ case class CreateTableCommand(
     ignoreIfExists: Boolean) extends LeafRunnableCommand {
 
   override def run(sparkSession: SparkSession): Seq[Row] = {
-    log.info(s"=== table provider:${table.provider}, " +
-      s" fordeal.session.user = " +
-      s"${FordealAuthUtils.getAuthUser(sparkSession)}")
-
-    // scalastyle:off
-    val tableWithOwner = table.copy(owner = FordealAuthUtils.getAuthUser(sparkSession))
-    // scalastyle:on
+    val tableWithOwner = FordealAuthUtils.getTableWithOwner(table, sparkSession)
 
     sparkSession.sessionState.catalog.createTable(tableWithOwner, ignoreIfExists)
     Seq.empty[Row]
