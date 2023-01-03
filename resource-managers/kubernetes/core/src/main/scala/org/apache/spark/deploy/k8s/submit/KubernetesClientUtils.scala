@@ -41,9 +41,11 @@ private[spark] object KubernetesClientUtils extends Logging {
     s"${prefix.take(KUBERNETES_DNS_SUBDOMAIN_NAME_MAX_LENGTH - suffix.length)}$suffix"
   }
 
-  val configMapNameExecutor: String = configMapName(s"spark-exec-${KubernetesUtils.uniqueID()}")
+  def configMapNameExecutor(appId: String): String =
+    configMapName(s"exec-$appId")
 
-  val configMapNameDriver: String = configMapName(s"spark-drv-${KubernetesUtils.uniqueID()}")
+  def configMapNameDriver(appId: String): String =
+    configMapName(s"drv-$appId")
 
   private def buildStringFromPropertiesMap(configMapName: String,
       propertiesMap: Map[String, String]): String = {

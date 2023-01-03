@@ -101,7 +101,7 @@ class ClientSuite extends SparkFunSuite with BeforeAndAfter {
           .withName(SPARK_CONF_VOLUME_DRIVER)
           .withNewConfigMap()
             .withItems(keyToPaths.asJava)
-            .withName(KubernetesClientUtils.configMapNameDriver)
+            .withName(KubernetesClientUtils.configMapNameDriver(kconf.appId))
             .endConfigMap()
           .endVolume()
         .endSpec()
@@ -220,7 +220,7 @@ class ClientSuite extends SparkFunSuite with BeforeAndAfter {
     assert(configMaps.nonEmpty)
     val configMap = configMaps.head
     assert(configMap.getMetadata.getName ===
-      KubernetesClientUtils.configMapNameDriver)
+      KubernetesClientUtils.configMapNameDriver(kconf.appId))
     assert(configMap.getImmutable())
     assert(configMap.getData.containsKey(SPARK_CONF_FILE_NAME))
     assert(configMap.getData.get(SPARK_CONF_FILE_NAME).contains("conf1key=conf1value"))
@@ -266,7 +266,7 @@ class ClientSuite extends SparkFunSuite with BeforeAndAfter {
     assert(configMaps.nonEmpty)
     val configMap = configMaps.head
     assert(configMap.getMetadata.getName ===
-      KubernetesClientUtils.configMapNameDriver)
+      KubernetesClientUtils.configMapNameDriver(kconf.appId))
     assert(configMap.getImmutable())
     assert(configMap.getData.containsKey(SPARK_CONF_FILE_NAME))
     assert(configMap.getData.get(SPARK_CONF_FILE_NAME).contains("conf1key=conf1value"))
@@ -331,7 +331,7 @@ class ClientSuite extends SparkFunSuite with BeforeAndAfter {
     val configMaps = otherCreatedResources.toArray
       .filter(_.isInstanceOf[ConfigMap]).map(_.asInstanceOf[ConfigMap])
     assert(configMaps.nonEmpty)
-    val configMapName = KubernetesClientUtils.configMapNameDriver
+    val configMapName = KubernetesClientUtils.configMapNameDriver(kconf.appId)
     val configMap: ConfigMap = configMaps.head
     assert(configMap.getMetadata.getName == configMapName)
     val configMapLoadedFiles = configMap.getData.keySet().asScala.toSet -
