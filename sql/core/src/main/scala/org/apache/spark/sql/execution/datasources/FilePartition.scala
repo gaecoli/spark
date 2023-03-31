@@ -71,6 +71,7 @@ object FilePartition extends Logging {
       currentSize = 0
     }
 
+    var allSize: Long = 0L
     // Assign files to partitions using "Next Fit Decreasing"
     partitionedFiles.foreach { file =>
       if (currentSize + file.length > maxSplitBytes) {
@@ -79,6 +80,11 @@ object FilePartition extends Logging {
       // Add the given file to the current partition.
       currentSize += file.length + openCostInBytes
       currentFiles += file
+      allSize += file.length
+    }
+    if (SQLConf.get.checkFilesIsEmpty) {
+      if (allSize == 0) throw new RuntimeException(s"scan file total length is empty, " +
+        s"reference ${SQLConf.CHECK_FILES_IS_EMPTY.key} is true")
     }
     closePartition()
     partitions.toSeq

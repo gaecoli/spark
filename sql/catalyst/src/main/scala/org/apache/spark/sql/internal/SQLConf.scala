@@ -3180,6 +3180,13 @@ object SQLConf {
       .booleanConf
       .createWithDefault(false)
 
+  val CHECK_FILES_IS_EMPTY =
+    buildConf("spark.sql.sources.scan.files.empty.check")
+      .doc("Check scan files if is empty, default false")
+      .version("3.4.0")
+      .booleanConf
+      .createWithDefault(false)
+
   object StoreAssignmentPolicy extends Enumeration {
     val ANSI, LEGACY, STRICT = Value
   }
@@ -5102,6 +5109,9 @@ class SQLConf extends Serializable with Logging with SqlApiConf {
 
   def partitionLocationFollowDefault: Boolean =
     getConf(PARTITION_LOCATION_USE_DEFAULT)
+
+  def checkFilesIsEmpty: Boolean =
+    getConf(CHECK_FILES_IS_EMPTY)
 
   def storeAssignmentPolicy: StoreAssignmentPolicy.Value =
     StoreAssignmentPolicy.withName(getConf(STORE_ASSIGNMENT_POLICY))
