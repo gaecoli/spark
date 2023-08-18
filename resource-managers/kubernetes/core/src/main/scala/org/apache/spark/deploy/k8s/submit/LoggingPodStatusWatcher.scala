@@ -17,8 +17,9 @@
 package org.apache.spark.deploy.k8s.submit
 
 import io.fabric8.kubernetes.api.model.Pod
-import io.fabric8.kubernetes.client.{Watcher, WatcherException}
+import io.fabric8.kubernetes.client.{KubernetesClient, Watcher, WatcherException}
 import io.fabric8.kubernetes.client.Watcher.Action
+import org.slf4j.{Logger, LoggerFactory}
 
 import org.apache.spark.deploy.k8s.Config._
 import org.apache.spark.deploy.k8s.KubernetesDriverConf
@@ -27,7 +28,10 @@ import org.apache.spark.internal.Logging
 
 private[k8s] trait LoggingPodStatusWatcher extends Watcher[Pod] {
   def watchOrStop(submissionId: String): Boolean
+
   def reset(): Unit
+
+  def withKubernetesClient(kubernetesClient: KubernetesClient): Unit
 }
 
 /**
@@ -38,6 +42,7 @@ private[k8s] trait LoggingPodStatusWatcher extends Watcher[Pod] {
  */
 private[k8s] class LoggingPodStatusWatcherImpl(conf: KubernetesDriverConf)
   extends LoggingPodStatusWatcher with Logging {
+  private val rawLogger: Logger = LoggerFactory.getLogger("RawLog")
 
   private val appId = conf.appId
 
@@ -47,7 +52,18 @@ private[k8s] class LoggingPodStatusWatcherImpl(conf: KubernetesDriverConf)
 
   private var pod = Option.empty[Pod]
 
+  private var kubernetesClient: Option[KubernetesClient] = None
+
+  private val logExtractPattern = "^(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})\\.\\d{9}Z (.*)$".r
+
+  private var lastSeenDriverLogTime: String = ""
+  private var lastSeenDriverLogCnt: Int = 0
+
   private def phase: String = pod.map(_.getStatus.getPhase).getOrElse("unknown")
+
+  override def withKubernetesClient(kubernetesClient: KubernetesClient): Unit = {
+    this.kubernetesClient = Option(kubernetesClient)
+  }
 
   override def reset(): Unit = {
     resourceTooOldReceived = false
@@ -95,14 +111,60 @@ private[k8s] class LoggingPodStatusWatcherImpl(conf: KubernetesDriverConf)
     this.notifyAll()
   }
 
-  override def watchOrStop(sId: String): Boolean = {
-    logInfo(s"Waiting for application ${conf.appName} with application ID ${conf.appId} " +
-      s"and submission ID $sId to finish...")
+  private def logDriverLog(): Unit = {
+    try {
+      if (!conf.get(WAIT_FOR_APP_COMPLETION)) return
+      if (phase == "Pending" || phase == "unknown") return
+      if (pod.isEmpty || pod.exists(_.getStatus.getPhase == "")) return
+      kubernetesClient.foreach { kClient =>
+        if (pod.nonEmpty) {
+          val sinceTime =
+            if (lastSeenDriverLogTime.nonEmpty) s"${lastSeenDriverLogTime}Z" else null
+          val logs = kClient.pods()
+            .withName(pod.map(_.getMetadata.getName).get)
+            .usingTimestamps()
+            .sinceTime(sinceTime)
+            .withPrettyOutput()
+            .getLog()
+          var lastSeenCnt = 0
+          var lastSeenTime = lastSeenDriverLogTime
+          logs.split("\n").foreach { line =>
+            val logExtractPattern(ts, raw) = line
+            if (ts == lastSeenTime) {
+              lastSeenCnt += 1
+            } else if (ts > lastSeenTime) {
+              lastSeenTime = ts
+              lastSeenCnt = 1
+            }
+            if ((ts == lastSeenDriverLogTime && lastSeenCnt > lastSeenDriverLogCnt) ||
+              ts > lastSeenDriverLogTime
+            ) {
+              rawLogger.info(raw)
+            }
+          }
+          lastSeenDriverLogTime = lastSeenTime.trim
+          lastSeenDriverLogCnt = lastSeenCnt
+        }
+      }
+    } catch {
+      case e: Throwable =>
+        log.warn("failed to fetch driver logs...")
+        if (e.getMessage.contains("unable to retrieve container logs for container")) {
+          log.warn(s"container is terminate, can not fetch logs: ${e.getMessage}")
+        } else {
+          log.warn(e.getMessage, e)
+        }
+    }
+  }
+
+  override def watchOrStop(sId: String): Boolean = if (conf.get(WAIT_FOR_APP_COMPLETION)) {
+    logInfo(s"Waiting for application ${conf.appName} with submission ID $sId to finish...")
     val interval = conf.get(REPORT_INTERVAL)
     synchronized {
       while (!podCompleted && !resourceTooOldReceived) {
         wait(interval)
         logInfo(s"Application status for $appId (phase: $phase)")
+        logDriverLog()
       }
     }
 

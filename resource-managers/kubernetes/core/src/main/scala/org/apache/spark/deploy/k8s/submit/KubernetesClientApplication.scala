@@ -32,7 +32,7 @@ import org.apache.spark.deploy.k8s.Config._
 import org.apache.spark.deploy.k8s.Constants._
 import org.apache.spark.deploy.k8s.KubernetesUtils.addOwnerReference
 import org.apache.spark.internal.Logging
-import org.apache.spark.util.Utils
+import org.apache.spark.util.{ShutdownHookManager, SignalUtils, Utils}
 
 /**
  * Encapsulates arguments to the submission client.
@@ -180,6 +180,8 @@ private[spark] class Client(
         throw e
     }
 
+    registerStopOnSignal(driverPodName)
+
     val sId = Seq(conf.namespace, driverPodName).mkString(":")
     breakable {
       while (true) {
@@ -198,6 +200,31 @@ private[spark] class Client(
           watch.close()
           break
         }
+      }
+    }
+  }
+
+  private def registerStopOnSignal(driverPodName: String): Unit = {
+    if (conf.sparkConf.get(WAIT_FOR_APP_COMPLETION)) {
+      def stopOnSignal(signal: String): Boolean = {
+        log.info(s"receive condition: $signal, " +
+          s"ready to kill application by driver pod: $driverPodName")
+        val killApplication = new KillApplication()
+        killApplication
+          .executeOnPod(driverPodName, None, conf.sparkConf)(kubernetesClient)
+        true
+      }
+
+      if (conf.sparkConf.get(KUBERNETES_DRIVER_DELETE_ON_SUBMIT_STOP_SIGNAL)) {
+        Seq("TERM", "INT").foreach { signal =>
+          SignalUtils.register(signal)(stopOnSignal(signal))
+        }
+      }
+
+      if (conf.sparkConf.get(KUBERNETES_DRIVER_DELETE_ON_SUBMIT_SHUTDOWN)) {
+        ShutdownHookManager.addShutdownHook(() => {
+          stopOnSignal("shutdown")
+        })
       }
     }
   }
@@ -242,6 +269,7 @@ private[spark] class KubernetesClientApplication extends SparkApplication {
       SparkKubernetesClientFactory.ClientType.Submission,
       sparkConf,
       None)) { kubernetesClient =>
+        watcher.withKubernetesClient(kubernetesClient)
         val client = new Client(
           kubernetesConf,
           new KubernetesDriverBuilder(),

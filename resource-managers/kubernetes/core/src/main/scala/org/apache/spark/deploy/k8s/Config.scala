@@ -749,6 +749,22 @@ private[spark] object Config extends Logging {
       .checkValue(value => value > 0, "Gracefully shutdown period must be a positive time value")
       .createWithDefaultString("20s")
 
+  val KUBERNETES_DRIVER_DELETE_ON_SUBMIT_STOP_SIGNAL =
+    ConfigBuilder("spark.kubernetes.driver.deleteOnSubmitStopSignal")
+      .doc(s"If true and ${WAIT_FOR_APP_COMPLETION.key} is enable, driver will be deleted on " +
+        s"Spark Submit receive stop signal(TERM/INT).")
+      .version("3.3.0")
+      .booleanConf
+      .createWithDefault(false)
+
+  val KUBERNETES_DRIVER_DELETE_ON_SUBMIT_SHUTDOWN =
+    ConfigBuilder("spark.kubernetes.driver.deleteOnSubmitShutdown")
+      .doc(s"If true and ${WAIT_FOR_APP_COMPLETION.key} is enable, driver will be deleted on " +
+        s"Spark Submit shutdown.")
+      .version("3.3.0")
+      .booleanConf
+      .createWithDefault(false)
+
   val KUBERNETES_DRIVER_LABEL_PREFIX = "spark.kubernetes.driver.label."
   val KUBERNETES_DRIVER_ANNOTATION_PREFIX = "spark.kubernetes.driver.annotation."
   val KUBERNETES_DRIVER_SERVICE_LABEL_PREFIX = "spark.kubernetes.driver.service.label."
