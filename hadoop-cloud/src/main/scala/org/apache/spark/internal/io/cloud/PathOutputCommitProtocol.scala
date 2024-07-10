@@ -194,17 +194,6 @@ class PathOutputCommitProtocol(
     committer.isInstanceOf[MagicS3GuardCommitter]
 
   /**
-   * Does the instantiated committer support dynamic partitions?
-   * @return true if the committer declares itself compatible.
-   */
-  private def supportsDynamicPartitions = {
-    committer.isInstanceOf[FileOutputCommitter] ||
-      (committer.isInstanceOf[StreamCapabilities] &&
-        committer.asInstanceOf[StreamCapabilities]
-          .hasCapability(CAPABILITY_DYNAMIC_PARTITIONING))
-  }
-
-  /**
    * Create a temporary file for a task.
    *
    * @param taskContext task context

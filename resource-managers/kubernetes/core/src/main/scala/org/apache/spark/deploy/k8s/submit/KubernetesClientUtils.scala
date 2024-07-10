@@ -28,7 +28,7 @@ import scala.io.{Codec, Source}
 import io.fabric8.kubernetes.api.model.{ConfigMap, ConfigMapBuilder, KeyToPath}
 
 import org.apache.spark.SparkConf
-import org.apache.spark.deploy.k8s.{Config, Constants, KubernetesUtils}
+import org.apache.spark.deploy.k8s.{Config, Constants}
 import org.apache.spark.deploy.k8s.Config.{KUBERNETES_DNS_SUBDOMAIN_NAME_MAX_LENGTH, KUBERNETES_NAMESPACE}
 import org.apache.spark.deploy.k8s.Constants.ENV_SPARK_CONF_DIR
 import org.apache.spark.internal.Logging

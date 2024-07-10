@@ -168,13 +168,17 @@ private[k8s] class LoggingPodStatusWatcherImpl(conf: KubernetesDriverConf)
       }
     }
 
-    if(podCompleted) {
+    if (podCompleted) {
       logInfo(
         pod.map { p => s"Container final statuses:\n\n${containersDescription(p)}" }
           .getOrElse("No containers were found in the driver pod."))
-      logInfo(s"Application ${conf.appName} with application ID ${conf.appId} " +
-        s"and submission ID $sId finished")
+      logInfo(s"Application ${conf.appName} with submission ID $sId finished")
     }
     podCompleted
+  } else {
+    logInfo(s"Deployed Spark application ${conf.appName} with submission ID $sId into Kubernetes")
+    // Always act like the application has completed since we don't want to wait for app completion
+    true
   }
+
 }
