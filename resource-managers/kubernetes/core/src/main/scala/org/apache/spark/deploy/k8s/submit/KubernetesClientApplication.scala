@@ -183,24 +183,30 @@ private[spark] class Client(
     registerStopOnSignal(driverPodName)
 
     val sId = Seq(conf.namespace, driverPodName).mkString(":")
-    breakable {
-      while (true) {
-        val podWithName = kubernetesClient
-          .pods()
-          .withName(driverPodName)
-        // Reset resource to old before we start the watch, this is important for race conditions
-        watcher.reset()
-        watch = podWithName.watch(watcher)
+    if (conf.get(WAIT_FOR_APP_COMPLETION)) {
+      breakable {
+        while (true) {
+          val podWithName = kubernetesClient
+            .pods()
+            .inNamespace(conf.namespace)
+            .withName(driverPodName)
+          // Reset resource to old before we start the watch, this is important for race conditions
+          watcher.reset()
+          watch = podWithName.watch(watcher)
 
-        // Send the latest pod state we know to the watcher to make sure we didn't miss anything
-        watcher.eventReceived(Action.MODIFIED, podWithName.get())
+          // Send the latest pod state we know to the watcher to make sure we didn't miss anything
+          watcher.eventReceived(Action.MODIFIED, podWithName.get())
 
-        // Break the while loop if the pod is completed or we don't want to wait
-        if (watcher.watchOrStop(sId)) {
-          watch.close()
-          break
+          // Break the while loop if the pod is completed or we don't want to wait
+          if (watcher.watchOrStop(sId)) {
+            watch.close()
+            break
+          }
         }
       }
+    } else {
+      logInfo(s"Deployed Spark application ${conf.appName} with application ID ${conf.appId} " +
+        s"and submission ID $sId into Kubernetes")
     }
   }
 

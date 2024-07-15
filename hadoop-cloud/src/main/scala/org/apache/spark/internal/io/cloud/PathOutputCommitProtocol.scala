@@ -19,6 +19,9 @@ package org.apache.spark.internal.io.cloud
 
 import java.io.IOException
 
+import scala.collection.mutable
+import scala.util.Try
+
 import org.apache.hadoop.fs.{Path, StreamCapabilities}
 import org.apache.hadoop.fs.s3a.commit.magic.MagicS3GuardCommitter
 import org.apache.hadoop.mapreduce.{JobContext, TaskAttemptContext}
@@ -76,6 +79,12 @@ class PathOutputCommitProtocol(
 
   /** The destination path. This is serializable in Hadoop 3. */
   private[cloud] val destPath: Path = new Path(destination)
+
+  private val hasValidPath = Try { new Path(destination) }.isSuccess
+
+  private var addedAbsPathFiles: mutable.Map[String, String] = null
+
+  private var partitionPaths: mutable.Set[String] = null
 
   logTrace(s"Instantiated committer with job ID=$jobId;" +
     s" destination=$destPath;" +
